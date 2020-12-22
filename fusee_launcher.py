@@ -31,8 +31,9 @@ import os
 import sys
 import errno
 import ctypes
-import argparse
+import mock_arguments
 import platform
+import time
 
 # The address where the RCM payload is placed.
 # This is fixed for most device.
@@ -340,7 +341,7 @@ class WindowsBackend(HaxBackend):
         if ret == 0:
             print('Lstk_Init(): Error')
             return None
-            
+
 
         # Get info for a device with that vendor ID and product ID
         # device_info should either be a pointer or be passed 'byref'
@@ -593,7 +594,7 @@ def parse_usb_id(id):
 def do_hax(arguments):
     # Make a function out of the original script
     # The objective is to be able to use fusee-launcher as module
-    
+
     # Expand out the payload path to handle any user-refrences.
     payload_path = os.path.expanduser(arguments.payload)
     if not os.path.isfile(payload_path):
@@ -608,7 +609,7 @@ def do_hax(arguments):
 
     # Get a connection to our device.
     try:
-        switch = RCMHax(wait_for_device=arguments.wait, vid=arguments.vid, 
+        switch = RCMHax(wait_for_device=arguments.wait, vid=arguments.vid,
                 pid=arguments.pid, os_override=arguments.platform, override_checks=arguments.skip_checks)
     except IOError as e:
         print(e)
@@ -701,3 +702,20 @@ def do_hax(arguments):
         print("The USB device stopped responding-- sure smells like we've smashed its stack. :)")
         print("Launch complete!")
 
+
+def main():
+    usb_backend = HaxBackend.create_appropriate_backend()
+    print('Looking for Nintendo Switch in RCM mode')
+    device = None
+    while device is None:
+        device = usb_backend.find_device(0x0955, 0x7321)
+        time.sleep(1)
+    args = mock_arguments.MockArguments()
+    args.payload = '/opt/switch/payload.bin'
+    args.relocator = '/opt/switch/fusee-interfacee-tk/intermezzo.bin'
+    print('Starting hack with args:\n{}'.format(args))
+    do_hax(args)
+
+
+if __name__ == "__main__":
+    main()
